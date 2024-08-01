@@ -44,17 +44,12 @@ class UnifiedSFTDataset(Dataset):
         conversations = data['conversation']
         # 拼接多轮对话
         for i, conv in enumerate(conversations):
-            human = conv['human'].strip()
-            assistant = conv['assistant'].strip()
-
-            human = self.user_format.format(content=human, stop_token=self.tokenizer.eos_token)
-            assistant = self.assistant_format.format(content=assistant, stop_token=self.tokenizer.eos_token)
-
-            input_tokens = self.tokenizer.encode(human, add_special_tokens=False)
-            output_tokens = self.tokenizer.encode(assistant, add_special_tokens=False)
-
-            input_ids += input_tokens + output_tokens
-            target_mask += [0] * len(input_tokens) + [1] * len(output_tokens)
+            template = self.user_format if conv['role'] in ['human', 'user'] else self.assistant_format
+            
+            content = template.format(content=conv['content'], stop_token=self.tokenizer.eos_token)            
+            tokens = self.tokenizer.encode(content, add_special_tokens=False)
+            input_ids += tokens
+            target_mask += [conv.get('mask', 0)] * len(tokens)
 
         assert len(input_ids) == len(target_mask)
         # 对长度进行截断
